@@ -62,6 +62,8 @@ class ChessInterface
       puts
     end
   end
+
+
 end
 
 class Chess
@@ -73,6 +75,20 @@ class Chess
     @interface = ChessInterface.new
     @board = Board.new
   end
+
+  def play
+    player = :white
+    until @board.mate? or @board.draw?
+      move = @interface.get_move(player)
+      player = color_switch(player)
+    end
+  end
+
+  def color_switch(color)
+    return :black if color == :white
+    :white
+  end
+
   def board
     @board.board
   end
@@ -125,13 +141,25 @@ class Board
     #whether or not king of color is in check
   end
 
-  def mate?(color)
+  def preview_board(start_pos,end_pos)
+    future_board = []
+    @board.each { |row| future_board << row.dup }
+    piece = @board[start_pos[0]][start_pos[1]]
+    future_board[start_pos[0]][start_pos[1]] = nil
+    future_board[end_pos[0]][end_pos[1]] = piece
+    future_board
+  end
+
+  def mate?
+    #return :black if false#if black checkmates
+    #return :white if false#if white checkmates
+    false
     #whether or not player of color has lost
   end
   #pieces
   #
   def valid_move?(position, color)
-    valid_moves(color).include?(position)
+    piece_positions(color).include?(position)
     # on the board
     # not on a current peice of the same color
     # follow the
@@ -146,22 +174,50 @@ class Board
 end
 
 class Piece
-  attr_accessor :position
-  attr_reader :color
+  attr_reader :color, :position
 
   def initialize(board, color)
     @board = board
     @color = color
+    @moved = false
   end
 
   def valid_moves
-    #return a list of possible moves
+    valid_moves = []
+    valid_moves
   end
+
   def out_of_bounds?(move)
     move[0] < 0 || move[0] > 7 || move[1] < 0 || move[1] > 7
   end
+
   def overlap_team?(move)
     @board.valid_move?(move, @color)
+  end
+  def overlap_enemy?(move)
+    @board.valid_move?(move, opposite_color)
+  end
+  def opposite_color
+    if @color == :white
+      :black
+    else
+      :white
+    end
+  end
+  def move(move)
+    @moved = true
+    raise "Invalid move" if !valid_moves.include?(move)
+    unless @board[@position[0]][@position[1]].nil?
+      dead_piece = @board[@position[0]][@position[1]]
+      if dead_piece.color == :black
+        @board.black.reject! {|piece| piece == dead_piece}
+      else
+        @board.white.reject! {|piece| piece == dead_piece}
+      end
+      @board[@position[0]][@position[1]] = nil
+    end
+    @position = [move[0], move[1]]
+    @board[move[0]][move[1]] = self
   end
 end
 
@@ -169,11 +225,12 @@ class King < Piece
   def valid_moves
     valid_moves = []
     [-1,0,1].product([-1,0,1]).each do |vector|
+      move = [vector[0]+position[0], vector[1]+position[1]]
       next if vector == [0,0]
       next if out_of_bounds?(move)
       next if overlap_team?(move)
-      move = [vector[0]+position[0], vector[1]+position[1]]
-      valid_moves << move unless check?(black)
+      next if check?(@color, preview_board(@position, move))
+      valid_moves << move
     end
     valid_moves
   end
@@ -198,7 +255,25 @@ class Bishop < Piece
 end
 
 class Pawn < Piece
-
+  def valid_moves
+    direction = 1
+    direction = -1 if @color = :black
+    valid_moves = []
+    move = [@position[0]+direction, @position[1]]
+    if !overlap_team?(move) && !overlap_enemy?(move)
+      valid_moves << move
+      move = [@position[0]+direction*2, @position[1]]
+      valid_moves << move if !overlap_team?(move) && !overlap_enemy?(move)
+    end
+    [-1, 1].each do |diagonal_offset|
+      move = [@position[0]+direction, @position[1]+diagonal_offset]
+      valid_moves << move if overlap_enemy?(move)
+    end
+    # if the pawn has moved and if nothing is blocking it, add the square 2 ahead
+    # if nothing is blocking it
+    # if a peice is forward and left/right it can take it
+    valid_moves
+  end
 end
 
 board = Board.new
