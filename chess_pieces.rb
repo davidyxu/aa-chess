@@ -9,7 +9,6 @@ class Piece
     @moved = false
   end
 
-  # we can only know if a move leads to check if we switch the color
   def move_leads_to_check?(move)
     preview = @board.preview_move(@position, move)
     @board.check?(@color, preview)
@@ -19,17 +18,17 @@ class Piece
   end
 
   def valid_moves
-    valid_moves = possible_moves.reject { |move| move_leads_to_check?(move) }
-    p valid_moves if self.is_a?(King)
-    valid_moves
+    possible_moves.reject { |move| move_leads_to_check?(move) }
+    #p valid_moves if self.is_a?(King)
+    #valid_moves
   end
 
   def out_of_bounds?(move)
     move[0] < 0 || move[0] > 7 || move[1] < 0 || move[1] > 7
   end
 
-  def overlap_team?(move)
-    @board.overlap_position?(move, @color)
+  def overlap_team?(move, pieces)
+    @board.overlap_position?(move, @color, pieces)
   end
 
   def overlap_enemy?(move, pieces)
@@ -56,6 +55,7 @@ class Piece
   def remove_dead_piece(dead_piece)
     @board.pieces.reject! {|piece| piece == dead_piece}
   end
+
   def moves_in_one_direction(vector, pieces)
     possible_moves = []
     blocked = false
@@ -66,13 +66,14 @@ class Piece
         blocked = true
       end
       next if out_of_bounds?(move)
-      next if overlap_team?(move)
+      next if overlap_team?(move, pieces)
       possible_moves << move
     end
     possible_moves
   end
+
   def blocked?(move, pieces)
-    overlap_enemy?(move,pieces) || out_of_bounds?(move) || overlap_team?(move)
+    overlap_enemy?(move,pieces) || out_of_bounds?(move) || overlap_team?(move, pieces)
   end
 end
 
@@ -83,7 +84,7 @@ class King < Piece
       move = [vector[0]+@position[0], vector[1]+@position[1]]
       next if vector == [0,0]
       next if out_of_bounds?(move)
-      next if overlap_team?(move)
+      next if overlap_team?(move, pieces)
       possible_moves << move
     end
     possible_moves
@@ -93,7 +94,7 @@ end
 class Queen  < Piece
   def possible_moves(pieces = @board.pieces)
     possible_moves = []
-    # sorry... we know... we're tired :(
+
     possible_moves += moves_in_one_direction([1,1], pieces)
     possible_moves += moves_in_one_direction([-1,-1], pieces)
     possible_moves += moves_in_one_direction([1,-1], pieces)
@@ -124,14 +125,14 @@ end
 
 class Knight < Piece
   def possible_moves(pieces = @board.pieces)
-    moves_one_way([-1,1], [-2,2]) + moves_one_way([-2,2],[-1,1])
+    moves_one_way([-1,1], [-2,2],pieces) + moves_one_way([-2,2],[-1,1],pieces)
   end
-  def moves_one_way(vector_row, vector_col)
+  def moves_one_way(vector_row, vector_col, pieces)
     possible_moves = []
     vector_row.product(vector_col).each do |vector|
       move = [@position[0]+vector[0], @position[1]+vector[1]]
       next if out_of_bounds?(move)
-      next if overlap_team?(move)
+      next if overlap_team?(move, pieces)
       possible_moves << move
     end
     possible_moves
@@ -158,10 +159,10 @@ class Pawn < Piece
     direction = 1 if @color == :black
     possible_moves = []
     move = [@position[0]+direction, @position[1]]
-    if !overlap_team?(move) && !overlap_enemy?(move, pieces)
+    if !overlap_team?(move, pieces) && !overlap_enemy?(move, pieces)
       possible_moves << move
       move = [@position[0]+direction*2, @position[1]]
-      if !overlap_team?(move) && !overlap_enemy?(move, pieces) && @moved == false
+      if !overlap_team?(move, pieces) && !overlap_enemy?(move, pieces) && @moved == false
         possible_moves << move
       end
     end

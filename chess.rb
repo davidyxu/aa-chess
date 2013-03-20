@@ -2,7 +2,6 @@
 
 require 'colorize'
 require_relative 'chess_pieces'
-
 class Player
 end
 
@@ -204,15 +203,15 @@ class Board
 
   def check?(color, pieces = @pieces)
     if color == :black
-      #enemy = white(pieces)
-      enemy_moves = move_set(:white, pieces)
+      enemy = white(pieces)
+      #enemy_moves = move_set(:white, pieces)
       king = black(pieces).select { |piece| piece.is_a?(King) }[0]
     elsif color == :white
-      #enemy = black(pieces)
-      enemy_moves = move_set(:black, pieces)
+      enemy = black(pieces)
+      #enemy_moves = move_set(:black, pieces)
       king = white(pieces).select { |piece| piece.is_a?(King) }[0]
     end
-    #enemy_moves = enemy.inject([]) { |moves, piece| moves + piece.possible_moves(pieces) }
+    enemy_moves = enemy.inject([]) { |moves, piece| moves + piece.possible_moves(pieces) }
     enemy_moves.include?(king.position)
   end
 
@@ -239,15 +238,13 @@ class Board
   def move_set(color, pieces = @pieces)
     player_pieces = white(pieces) if color == :white
     player_pieces = black(pieces) if color == :black
-    player_pieces.inject([]) { |moves, piece| moves + piece.possible_moves(pieces) }
+    player_pieces.inject([]) { |moves, piece| moves + piece.valid_moves }
   end
 
   def mate?(color)
-    return :black if move_set(:black) == []#if black checkmates
-    return :white if move_set(:white) == []
-    #return :white if false#if white checkmates
+    return :black if move_set(:black).empty?
+    return :white if move_set(:white).empty?
     false
-    #whether or not player of color has lost
   end
 
   def overlap_position?(position, color, pieces = @pieces)
