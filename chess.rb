@@ -1,7 +1,7 @@
 # encoding: utf-8
 
 require 'colorize'
-
+require_relative 'chess_pieces'
 class Player
 end
 
@@ -108,37 +108,37 @@ class Chess
   # create the board
   # create the players
   def initialize
-    @interface = ChessInterface.new
     @board = Board.new
+    @interface = ChessInterface.new
     play
   end
 
   def play
-    player = :black
-    until @board.mate? or @board.draw?
+    turn = :white
+    until @board.game_over
       begin
-        @interface.print_board(board)
-        move = @interface.get_move(player)
-        start_position = move[0]
-        end_position = move[1]
-        piece = board[start_position[0]][start_position[1]]
-      end until @board.overlap_position?(move[0], player) && @board.overlap_position?(start_position, player) && piece.valid_moves.include?(move[1])
-      start_position = move[0]
-      end_position = move[1]
-      @board.move_piece(start_position, end_position)
-      player = color_switch(player)
+        @interface.print_board(@board.board)
+        move = @interface.get_move(turn)
+      end until valid_move_selected?(move, turn)
+      @board.move_piece(move[0], move[1])
+      turn = switch_turn(turn)
     end
+    end_message
   end
 
-  def color_switch(color)
-    return :black if color == :white
-    :white
+  def valid_move_selected?(move, turn)
+    start_position = move[0]
+    piece = @board.board[start_position[0]][start_position[1]]
+    @board.overlap_position?(move[0], turn) && piece.valid_moves.include?(move[1])
   end
 
-  def board
-    @board.board
+  def switch_turn(color)
+    color == :white ? :black : :white
   end
 
+  def end_message
+    @interface.display_results(@board.game_over)
+  end
 end
 
 class Board
@@ -193,9 +193,8 @@ class Board
       king = @white.select { |piece| piece.is_a?(King) }
     end
     valid_moves = pieces.inject([]) { |moves, piece| moves + piece.valid_moves }
-    valid_moves.include?(king.position)
+    valid_moves.include?(king[0].position)
 =end
-    false
   end
 
   def preview_board(start_pos,end_pos)
@@ -206,10 +205,17 @@ class Board
     future_board[end_pos[0]][end_pos[1]] = piece
     future_board
   end
+  def game_over
+    winner = false
+    winner = :white if mate?(:black)
+    winner = :black if mate?(:white)
+    winner = :draw if draw?
+    winner
+  end
   def draw?
     false
   end
-  def mate?
+  def mate?(color)
     #return :black if false#if black checkmates
     #return :white if false#if white checkmates
     false
@@ -238,180 +244,6 @@ class Board
   def move_piece(piece_position, move)
     selected_piece = @board[piece_position[0]][piece_position[1]]
     selected_piece.move(move)
-  end
-end
-
-class Piece
-  attr_accessor :position
-  attr_reader :color
-
-  def initialize(board, color)
-    @board = board
-    @color = color
-    @moved = false
-  end
-
-  def move_leads_to_check?(move)
-    @board.check?(@color, @board.preview_board(@position, move))
-  end
-
-  def valid_moves
-    valid_moves = []
-    valid_moves
-  end
-
-  def out_of_bounds?(move)
-    move[0] < 0 || move[0] > 7 || move[1] < 0 || move[1] > 7
-  end
-
-  def overlap_team?(move)
-    @board.overlap_position?(move, @color)
-  end
-
-  def overlap_enemy?(move)
-    @board.overlap_position?(move, opposite_color)
-  end
-
-  def opposite_color
-    return :black if @color == :white
-    :white
-  end
-
-  def move(move)
-    raise "Invalid move" unless valid_moves.include?(move)
-    @moved = true
-    unless @board.board[move[0]][move[1]].nil?
-      dead_piece = @board.board[move[0]][move[1]]
-      remove_dead_piece(dead_piece)
-    end
-    @board.board[move[0]][move[1]] = self
-    @board.board[@position[0]][@position[1]] = nil
-    @position = [move[0], move[1]]
-  end
-
-  def remove_dead_piece(dead_piece)
-    if dead_piece.color == :black
-      @board.black.reject! {|piece| piece == dead_piece}
-    else
-      @board.white.reject! {|piece| piece == dead_piece}
-    end
-  end
-
-  def moves_in_one_direction(vector)
-    valid_moves = []
-    blocked = false
-    move = @position
-    until blocked
-      move = [move[0]+vector[0], move[1]+vector[1]]
-      if overlap_enemy?(move) || out_of_bounds?(move)
-        blocked = true
-      end
-      next if out_of_bounds?(move)
-      next if overlap_team?(move)
-      next if move_leads_to_check?(move)
-      valid_moves << move
-    end
-    valid_moves
-  end
-end
-
-class King < Piece
-  def valid_moves
-    valid_moves = []
-    [-1,0,1].product([-1,0,1]).each do |vector|
-      move = [vector[0]+@position[0], vector[1]+@position[1]]
-      next if vector == [0,0]
-      next if out_of_bounds?(move)
-      next if overlap_team?(move)
-      next if move_leads_to_check?(move)
-      valid_moves << move
-    end
-    valid_moves
-  end
-end
-
-class Queen  < Piece
-  def valid_moves
-    valid_moves = []
-    # sorry... we know... we're tired :(
-    valid_moves += moves_in_one_direction([1,1])
-    valid_moves += moves_in_one_direction([-1,-1])
-    valid_moves += moves_in_one_direction([1,-1])
-    valid_moves += moves_in_one_direction([-1,1])
-
-    valid_moves += moves_in_one_direction([0,1])
-    valid_moves += moves_in_one_direction([0,-1])
-    valid_moves += moves_in_one_direction([1,0])
-    valid_moves += moves_in_one_direction([-1,0])
-
-    valid_moves
-  end
-
-end
-
-class Rook < Piece
-  def valid_moves
-    valid_moves = []
-    valid_moves += moves_in_one_direction([0,1])
-    valid_moves += moves_in_one_direction([0,-1])
-    valid_moves += moves_in_one_direction([1,0])
-    valid_moves += moves_in_one_direction([-1,0])
-
-    valid_moves
-    # loop along all 4 directions until we hit a friendly, an enemy, wall
-  end
-end
-
-class Knight < Piece
-  def valid_moves
-    moves_one_way([-1,1], [-2,2]) + moves_one_way([-2,2],[-1,1])
-  end
-  def moves_one_way(vector_row, vector_col)
-    valid_moves = []
-    vector_row.product(vector_col).each do |vector|
-      move = [@position[0]+vector[0], @position[1]+vector[1]]
-      next if out_of_bounds?(move)
-      next if overlap_team?(move)
-      next if move_leads_to_check?(move)
-      valid_moves << move
-    end
-    valid_moves
-  end
-end
-
-class Bishop < Piece
-  def valid_moves
-    valid_moves = []
-
-    valid_moves += moves_in_one_direction([1,1])
-    valid_moves += moves_in_one_direction([-1,-1])
-    valid_moves += moves_in_one_direction([1,-1])
-    valid_moves += moves_in_one_direction([-1,1])
-
-
-    valid_moves
-  end
-end
-
-class Pawn < Piece
-  def valid_moves
-    direction = -1
-    direction = 1 if @color == :black
-    valid_moves = []
-    move = [@position[0]+direction, @position[1]]
-    if !overlap_team?(move) && !overlap_enemy?(move)
-      valid_moves << move
-      move = [@position[0]+direction*2, @position[1]]
-      if !overlap_team?(move) && !overlap_enemy?(move) && @moved == false
-        valid_moves << move
-      end
-    end
-    [-1, 1].each do |diagonal_offset|
-      move = [@position[0]+direction, @position[1]+diagonal_offset]
-      next if out_of_bounds?(move)
-      valid_moves << move if overlap_enemy?(move)
-    end
-    valid_moves
   end
 end
 
