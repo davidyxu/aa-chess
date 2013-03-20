@@ -11,7 +11,7 @@ class Piece
 
   # we can only know if a move leads to check if we switch the color
   def move_leads_to_check?(move)
-    preview = @board.preview_board(@position, move)
+    preview = @board.preview_move(@position, move)
     @board.check?(@color, preview)
   end
 
@@ -19,7 +19,9 @@ class Piece
   end
 
   def valid_moves
-    possible_moves.reject { |move| move_leads_to_check?(move) }
+    valid_moves = possible_moves.reject { |move| move_leads_to_check?(move) }
+    p valid_moves if self.is_a?(King)
+    valid_moves
   end
 
   def out_of_bounds?(move)
@@ -30,8 +32,8 @@ class Piece
     @board.overlap_position?(move, @color)
   end
 
-  def overlap_enemy?(move)
-    @board.overlap_position?(move, opposite_color)
+  def overlap_enemy?(move, pieces)
+    @board.overlap_position?(move, opposite_color, pieces)
   end
 
   def opposite_color
@@ -60,7 +62,7 @@ class Piece
     move = @position
     until blocked
       move = [move[0]+vector[0], move[1]+vector[1]]
-      if blocked(move, pieces)
+      if blocked?(move, pieces)
         blocked = true
       end
       next if out_of_bounds?(move)
@@ -70,12 +72,12 @@ class Piece
     possible_moves
   end
   def blocked?(move, pieces)
-    overlap_enemy?(move,pieces) || out_of_bounds?(move,pieces) || overlap_team?(move, pieces)
+    overlap_enemy?(move,pieces) || out_of_bounds?(move) || overlap_team?(move)
   end
 end
 
 class King < Piece
-  def possible_moves
+  def possible_moves(pieces = @board.pieces)
     possible_moves = []
     [-1,0,1].product([-1,0,1]).each do |vector|
       move = [vector[0]+@position[0], vector[1]+@position[1]]
@@ -89,18 +91,18 @@ class King < Piece
 end
 
 class Queen  < Piece
-  def possible_moves
+  def possible_moves(pieces = @board.pieces)
     possible_moves = []
     # sorry... we know... we're tired :(
-    possible_moves += moves_in_one_direction([1,1])
-    possible_moves += moves_in_one_direction([-1,-1])
-    possible_moves += moves_in_one_direction([1,-1])
-    possible_moves += moves_in_one_direction([-1,1])
+    possible_moves += moves_in_one_direction([1,1], pieces)
+    possible_moves += moves_in_one_direction([-1,-1], pieces)
+    possible_moves += moves_in_one_direction([1,-1], pieces)
+    possible_moves += moves_in_one_direction([-1,1], pieces)
 
-    possible_moves += moves_in_one_direction([0,1])
-    possible_moves += moves_in_one_direction([0,-1])
-    possible_moves += moves_in_one_direction([1,0])
-    possible_moves += moves_in_one_direction([-1,0])
+    possible_moves += moves_in_one_direction([0,1], pieces)
+    possible_moves += moves_in_one_direction([0,-1], pieces)
+    possible_moves += moves_in_one_direction([1,0], pieces)
+    possible_moves += moves_in_one_direction([-1,0], pieces)
 
     possible_moves
   end
@@ -108,12 +110,12 @@ class Queen  < Piece
 end
 
 class Rook < Piece
-  def possible_moves
+  def possible_moves(pieces = @board.pieces)
     possible_moves = []
-    possible_moves += moves_in_one_direction([0,1])
-    possible_moves += moves_in_one_direction([0,-1])
-    possible_moves += moves_in_one_direction([1,0])
-    possible_moves += moves_in_one_direction([-1,0])
+    possible_moves += moves_in_one_direction([0,1], pieces)
+    possible_moves += moves_in_one_direction([0,-1], pieces)
+    possible_moves += moves_in_one_direction([1,0], pieces)
+    possible_moves += moves_in_one_direction([-1,0], pieces)
 
     possible_moves
     # loop along all 4 directions until we hit a friendly, an enemy, wall
@@ -121,7 +123,7 @@ class Rook < Piece
 end
 
 class Knight < Piece
-  def possible_moves
+  def possible_moves(pieces = @board.pieces)
     moves_one_way([-1,1], [-2,2]) + moves_one_way([-2,2],[-1,1])
   end
   def moves_one_way(vector_row, vector_col)
@@ -137,13 +139,13 @@ class Knight < Piece
 end
 
 class Bishop < Piece
-  def possible_moves
+  def possible_moves(pieces = @board.pieces)
     possible_moves = []
 
-    possible_moves += moves_in_one_direction([1,1])
-    possible_moves += moves_in_one_direction([-1,-1])
-    possible_moves += moves_in_one_direction([1,-1])
-    possible_moves += moves_in_one_direction([-1,1])
+    possible_moves += moves_in_one_direction([1,1], pieces)
+    possible_moves += moves_in_one_direction([-1,-1], pieces)
+    possible_moves += moves_in_one_direction([1,-1], pieces)
+    possible_moves += moves_in_one_direction([-1,1], pieces)
 
 
     possible_moves
@@ -151,22 +153,22 @@ class Bishop < Piece
 end
 
 class Pawn < Piece
-  def possible_moves
+  def possible_moves(pieces = @board.pieces)
     direction = -1
     direction = 1 if @color == :black
     possible_moves = []
     move = [@position[0]+direction, @position[1]]
-    if !overlap_team?(move) && !overlap_enemy?(move)
+    if !overlap_team?(move) && !overlap_enemy?(move, pieces)
       possible_moves << move
       move = [@position[0]+direction*2, @position[1]]
-      if !overlap_team?(move) && !overlap_enemy?(move) && @moved == false
+      if !overlap_team?(move) && !overlap_enemy?(move, pieces) && @moved == false
         possible_moves << move
       end
     end
     [-1, 1].each do |diagonal_offset|
       move = [@position[0]+direction, @position[1]+diagonal_offset]
       next if out_of_bounds?(move)
-      possible_moves << move if overlap_enemy?(move)
+      possible_moves << move if overlap_enemy?(move, pieces)
     end
     possible_moves
   end

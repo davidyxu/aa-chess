@@ -2,6 +2,7 @@
 
 require 'colorize'
 require_relative 'chess_pieces'
+
 class Player
 end
 
@@ -47,6 +48,7 @@ class ChessInterface
     @unicode_chess = [['♔','♚'],['♕','♛'],['♖','♜'],
                       ['♗','♝'],['♘','♞'],['♙','♟']]
   end
+
   def background_color(row, col)
     return :white if (row.even? && col.even?) || (row.odd? && col.odd?)
     :black
@@ -97,6 +99,7 @@ class ChessInterface
   def print_check_message(turn)
     puts "#{turn.capitalize} is in check!"
   end
+
   def get_move(turn)
     if turn == :white
       @white.get_move
@@ -104,6 +107,7 @@ class ChessInterface
       @black.get_move
     end
   end
+
   def display_results(winner)
     if winner == :draw
       puts "The game is a draw."
@@ -114,10 +118,6 @@ class ChessInterface
 end
 
 class Chess
-  #2 players
-  #1 board
-  # create the board
-  # create the players
   def initialize
     @board = Board.new
     @interface = ChessInterface.new
@@ -193,32 +193,34 @@ class Board
     back_row << Rook.new(self, side)
     back_row
   end
+
   def white(pieces = @pieces)
     pieces.select { |piece| piece.color == :white}
   end
+
   def black(pieces = @pieces)
     pieces.select { |piece| piece.color == :black}
   end
 
   def check?(color, pieces = @pieces)
     if color == :black
-      enemy = white(pieces)
+      #enemy = white(pieces)
+      enemy_moves = move_set(:white, pieces)
       king = black(pieces).select { |piece| piece.is_a?(King) }[0]
     elsif color == :white
-      enemy = black(pieces)
+      #enemy = black(pieces)
+      enemy_moves = move_set(:black, pieces)
       king = white(pieces).select { |piece| piece.is_a?(King) }[0]
     end
-
-    enemy_moves = enemy.inject([]) { |moves, piece| moves + piece.possible_moves }
+    #enemy_moves = enemy.inject([]) { |moves, piece| moves + piece.possible_moves(pieces) }
     enemy_moves.include?(king.position)
   end
 
-  def preview_board(start_pos,end_pos)
+  def preview_move(start_pos,end_pos)
     future_pieces = @pieces.map { |piece| piece.dup }
     moved_piece = future_pieces.select { |piece| piece.position == start_pos}[0]
     future_pieces.reject! { |piece| piece.position == end_pos }
     moved_piece.position = end_pos
-    p future_pieces.select { |piece| piece.position == start_pos}
     future_pieces
   end
 
@@ -229,30 +231,36 @@ class Board
     winner = :draw if draw?
     winner
   end
+
   def draw?
     false
   end
+
+  def move_set(color, pieces = @pieces)
+    player_pieces = white(pieces) if color == :white
+    player_pieces = black(pieces) if color == :black
+    player_pieces.inject([]) { |moves, piece| moves + piece.possible_moves(pieces) }
+  end
+
   def mate?(color)
-    #return :black if false#if black checkmates
+    return :black if move_set(:black) == []#if black checkmates
+    return :white if move_set(:white) == []
     #return :white if false#if white checkmates
     false
     #whether or not player of color has lost
   end
-  #pieces
-  #
-  def overlap_position?(position, color)
-    piece_positions(color).include?(position)
-    # on the board
-    # not on a current peice of the same color
-    # follow the
+
+  def overlap_position?(position, color, pieces = @pieces)
+    piece_positions(color, pieces).include?(position)
   end
-  def piece_positions(color)
+
+  def piece_positions(color, pieces)
     if color == :both
-      positions = @pieces.map { |piece| piece.position }
+      positions = pieces.map { |piece| piece.position }
     elsif color == :white
-      positions = white.map {|piece| piece.position }
+      positions = white(pieces).map {|piece| piece.position }
     elsif color == :black
-      positions = black.map {|piece| piece.position }
+      positions = black(pieces).map {|piece| piece.position }
     end
     positions
   end
