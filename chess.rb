@@ -18,6 +18,7 @@ class HumanPlayer < Player
     begin
       puts "It is #{@color}'s turn, please select a piece to move:"
       command = gets.chomp
+      # REV: i like this
     end until (/\A[a-h][1-8]\z/i).match(command)
     start_position = input_to_array(command.split(''))
     begin
@@ -154,6 +155,7 @@ class Board
   def setup_array_and_positions
     2.times do |row|
       8.times do |col|
+        # REV: this is confusing
         @black << @board[row][col]
         @white << @board[row+6][col]
         @board[row][col].position = [row, col]
@@ -317,6 +319,7 @@ end
 
 class King < Piece
   def valid_moves
+    # REV: i like how you delegated to methods here
     valid_moves = []
     [-1,0,1].product([-1,0,1]).each do |vector|
       move = [vector[0]+@position[0], vector[1]+@position[1]]
@@ -333,6 +336,11 @@ end
 class Queen  < Piece
   def valid_moves
     valid_moves = []
+    # REV: Haha, i know what you mean...
+    # you could have:
+    # valid_vectors = [[1,1], [-1,-1]...]
+    # then do:
+    # valid_vectors.each {|mv| valid_moves += moves_in_one_direction(mv)}
     # sorry... we know... we're tired :(
     valid_moves += moves_in_one_direction([1,1])
     valid_moves += moves_in_one_direction([-1,-1])
@@ -402,6 +410,9 @@ class Pawn < Piece
     if !overlap_team?(move) && !overlap_enemy?(move)
       valid_moves << move
       move = [@position[0]+direction*2, @position[1]]
+    # REV: where do you set @moved to true once the pawn moves?
+    # your code looks like it devolved through the day
+    # like ours!
       if !overlap_team?(move) && !overlap_enemy?(move) && @moved == false
         valid_moves << move
       end
