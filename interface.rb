@@ -10,19 +10,21 @@ class ChessInterface
     @black = HumanPlayer.new(:black)
     @unicode_chess = [['♔','♚'],['♕','♛'],['♖','♜'],
                       ['♗','♝'],['♘','♞'],['♙','♟']]
+    @piece_color = [:black, :black]
+    @border = :light_white
+    @checker = [:white, :light_white]
   end
 
   def background_color(row, col)
-    return :white if (row.even? && col.even?) || (row.odd? && col.odd?)
-    :black
+    (row.even? && col.even?) || (row.odd? && col.odd?) ? @checker[0] : @checker[1]
   end
 
   def piece_color(square)
     if square.is_a?(NilClass)
       return :white
     else
-      return :green if square.color == :white
-      return :red  if square.color == :black
+      return @piece_color[0] if square.color == :white
+      return @piece_color[1]  if square.color == :black
     end
   end
 
@@ -44,19 +46,27 @@ class ChessInterface
   end
 
   def print_board(board)
-    print "   "
-    ('a'..'h').each { |col| print " #{col}  ".colorize( :color => :magenta ) }
-    print "\n"
+    print_border_letters
     board.each_with_index do |row, row_index|
-      print " #{(8-row_index).to_s.colorize( :color => :magenta )} "
+      print_border_numbers(row_index)
       row.each_with_index do |square, col_index|
         color = piece_color(square)
         bg = background_color(row_index, col_index)
         piece = piece_representation(square)
-        print " #{piece}  ".colorize( :color => color, :background => bg )
+        print "#{piece} ".colorize( :color => color, :background => bg )
       end
+      print_border_numbers(row_index)
       puts
     end
+    print_border_letters
+  end
+  def print_border_letters
+    print "    "
+    ('a'..'h').each { |col| print "#{col} ".colorize( :color => @border ) }
+    print "\n"
+  end
+  def print_border_numbers(row_index)
+    print " #{(8-row_index).to_s.colorize( :color => @border )} "
   end
 
   def print_check_message(turn)
