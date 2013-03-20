@@ -93,11 +93,22 @@ class ChessInterface
       puts
     end
   end
-  def get_move(color)
-    if color == :white
+
+  def print_check_message(turn)
+    puts "#{turn.capitalize} is in check!"
+  end
+  def get_move(turn)
+    if turn == :white
       @white.get_move
     else
       @black.get_move
+    end
+  end
+  def display_results(winner)
+    if winner == :draw
+      puts "The game is a draw."
+    else
+      puts "#{winner.capitalize} is the winner"
     end
   end
 end
@@ -117,6 +128,7 @@ class Chess
     turn = :white
     until @board.game_over
       begin
+        @interface.print_check_message(turn) if @board.check?(turn)
         @interface.print_board(@board.board)
         move = @interface.get_move(turn)
       end until valid_move_selected?(move, turn)
@@ -142,11 +154,10 @@ class Chess
 end
 
 class Board
-  attr_reader :board, :black, :white
+  attr_reader :board, :pieces
 
   def initialize
-    @black = []
-    @white = []
+    @pieces = []
     @board = Array.new(8) { Array.new(8) { nil } }
     initialize_board
   end
@@ -154,8 +165,8 @@ class Board
   def setup_array_and_positions
     2.times do |row|
       8.times do |col|
-        @black << @board[row][col]
-        @white << @board[row+6][col]
+        @pieces << @board[row][col]
+        @pieces << @board[row+6][col]
         @board[row][col].position = [row, col]
         @board[row+6][col].position = [row+6, col]
       end
@@ -182,29 +193,35 @@ class Board
     back_row << Rook.new(self, side)
     back_row
   end
+  def white(pieces = @pieces)
+    pieces.select { |piece| piece.color == :white}
+  end
+  def black(pieces = @pieces)
+    pieces.select { |piece| piece.color == :black}
+  end
 
-  def check?(color, updated_board = @board)
-=begin
+  def check?(color, pieces = @pieces)
     if color == :black
-      pieces = @white
-      king = @black.select { |piece| piece.is_a?(King) }
+      enemy = white(pieces)
+      king = black(pieces).select { |piece| piece.is_a?(King) }[0]
     elsif color == :white
-      pieces = @black
-      king = @white.select { |piece| piece.is_a?(King) }
+      enemy = black(pieces)
+      king = white(pieces).select { |piece| piece.is_a?(King) }[0]
     end
-    valid_moves = pieces.inject([]) { |moves, piece| moves + piece.valid_moves }
-    valid_moves.include?(king[0].position)
-=end
+
+    enemy_moves = enemy.inject([]) { |moves, piece| moves + piece.possible_moves }
+    enemy_moves.include?(king.position)
   end
 
   def preview_board(start_pos,end_pos)
-    future_board = []
-    @board.each { |row| future_board << row.dup }
-    piece = @board[start_pos[0]][start_pos[1]]
-    future_board[start_pos[0]][start_pos[1]] = nil
-    future_board[end_pos[0]][end_pos[1]] = piece
-    future_board
+    future_pieces = @pieces.map { |piece| piece.dup }
+    moved_piece = future_pieces.select { |piece| piece.position == start_pos}[0]
+    future_pieces.reject! { |piece| piece.position == end_pos }
+    moved_piece.position = end_pos
+    p future_pieces.select { |piece| piece.position == start_pos}
+    future_pieces
   end
+
   def game_over
     winner = false
     winner = :white if mate?(:black)
@@ -231,16 +248,15 @@ class Board
   end
   def piece_positions(color)
     if color == :both
-      combined = @board.white + @board.black
-      positions = combined.map { |piece| piece.position }
+      positions = @pieces.map { |piece| piece.position }
     elsif color == :white
-      positions = @white.map {|piece| piece.position }
-
+      positions = white.map {|piece| piece.position }
     elsif color == :black
-      positions = @black.map {|piece| piece.position }
+      positions = black.map {|piece| piece.position }
     end
     positions
   end
+
   def move_piece(piece_position, move)
     selected_piece = @board[piece_position[0]][piece_position[1]]
     selected_piece.move(move)
