@@ -1,4 +1,3 @@
-
 class Piece
   attr_accessor :position
   attr_reader :color
@@ -7,6 +6,15 @@ class Piece
     @board = board
     @color = color
     @moved = false
+  end
+
+  def move(move)
+    raise "Invalid move" unless possible_moves.include?(move)
+    @moved = true
+    @board.remove_piece_at(move) unless @board[move].nil?
+    @board[move] = self
+    @board[@position] = nil
+    @position = move
   end
 
   def move_leads_to_check?(move)
@@ -19,45 +27,28 @@ class Piece
 
   def valid_moves
     possible_moves.reject { |move| move_leads_to_check?(move) }
-    #p valid_moves if self.is_a?(King)
-    #valid_moves
   end
 
   def out_of_bounds?(move)
     move[0] < 0 || move[0] > 7 || move[1] < 0 || move[1] > 7
   end
 
-  def overlap_team?(move, pieces)
-    @board.overlap_position?(move, @color, pieces)
+  def overlap?(move, pieces, color)
+    @board.piece_at_square?(move, color, pieces)
   end
+end
 
-  def overlap_enemy?(move, pieces)
-    @board.overlap_position?(move, opposite_color, pieces)
+class SlidingPiece < Piece
+
+  def sliding_moves(straight, diagonal, pieces)
+    vectors = []
+    vectors += [[1,0],[-1,0],[0,1],[0,-1]] if straight
+    vectors += [[1,-1],[-1,1],[-1,-1],[1,1]] if diagonal
+    vectors.inject([]) { |moves, vector| moves + moves_in_one_direction(vector, pieces)}
   end
-
-  def opposite_color
-    return :black if @color == :white
-    :white
-  end
-
-  def move(move)
-    raise "Invalid move" unless possible_moves.include?(move)
-    @moved = true
-    unless @board.board[move[0]][move[1]].nil?
-      dead_piece = @board.board[move[0]][move[1]]
-      remove_dead_piece(dead_piece)
-    end
-    @board.board[move[0]][move[1]] = self
-    @board.board[@position[0]][@position[1]] = nil
-    @position = [move[0], move[1]]
-  end
-
-  def remove_dead_piece(dead_piece)
-    @board.pieces.reject! {|piece| piece == dead_piece}
-  end
-
   def moves_in_one_direction(vector, pieces)
     possible_moves = []
+
     blocked = false
     move = @position
     until blocked
@@ -65,16 +56,16 @@ class Piece
       if blocked?(move, pieces)
         blocked = true
       end
-      next if out_of_bounds?(move)
-      next if overlap_team?(move, pieces)
+      next if out_of_bounds?(move) || overlap?(move, pieces, @color)
       possible_moves << move
     end
     possible_moves
   end
 
   def blocked?(move, pieces)
-    overlap_enemy?(move,pieces) || out_of_bounds?(move) || overlap_team?(move, pieces)
+    overlap?(move, pieces, @board.opposite_color(@color)) || out_of_bounds?(move) || overlap?(move, pieces, @color)
   end
+
 end
 
 class King < Piece
@@ -84,42 +75,26 @@ class King < Piece
       move = [vector[0]+@position[0], vector[1]+@position[1]]
       next if vector == [0,0]
       next if out_of_bounds?(move)
-      next if overlap_team?(move, pieces)
+      next if overlap?(move, pieces, @color)
       possible_moves << move
     end
     possible_moves
   end
+  def castling(pieces)
+
+  end
 end
 
-class Queen  < Piece
+class Queen < SlidingPiece
   def possible_moves(pieces = @board.pieces)
-    possible_moves = []
-
-    possible_moves += moves_in_one_direction([1,1], pieces)
-    possible_moves += moves_in_one_direction([-1,-1], pieces)
-    possible_moves += moves_in_one_direction([1,-1], pieces)
-    possible_moves += moves_in_one_direction([-1,1], pieces)
-
-    possible_moves += moves_in_one_direction([0,1], pieces)
-    possible_moves += moves_in_one_direction([0,-1], pieces)
-    possible_moves += moves_in_one_direction([1,0], pieces)
-    possible_moves += moves_in_one_direction([-1,0], pieces)
-
-    possible_moves
+    sliding_moves(true, true, pieces)
   end
 
 end
 
-class Rook < Piece
+class Rook < SlidingPiece
   def possible_moves(pieces = @board.pieces)
-    possible_moves = []
-    possible_moves += moves_in_one_direction([0,1], pieces)
-    possible_moves += moves_in_one_direction([0,-1], pieces)
-    possible_moves += moves_in_one_direction([1,0], pieces)
-    possible_moves += moves_in_one_direction([-1,0], pieces)
-
-    possible_moves
-    # loop along all 4 directions until we hit a friendly, an enemy, wall
+    sliding_moves(true, false, pieces)
   end
 end
 
@@ -132,24 +107,16 @@ class Knight < Piece
     vector_row.product(vector_col).each do |vector|
       move = [@position[0]+vector[0], @position[1]+vector[1]]
       next if out_of_bounds?(move)
-      next if overlap_team?(move, pieces)
+      next if overlap?(move, pieces, @color)
       possible_moves << move
     end
     possible_moves
   end
 end
 
-class Bishop < Piece
+class Bishop < SlidingPiece
   def possible_moves(pieces = @board.pieces)
-    possible_moves = []
-
-    possible_moves += moves_in_one_direction([1,1], pieces)
-    possible_moves += moves_in_one_direction([-1,-1], pieces)
-    possible_moves += moves_in_one_direction([1,-1], pieces)
-    possible_moves += moves_in_one_direction([-1,1], pieces)
-
-
-    possible_moves
+    sliding_moves(false, true, pieces)
   end
 end
 
@@ -159,17 +126,17 @@ class Pawn < Piece
     direction = 1 if @color == :black
     possible_moves = []
     move = [@position[0]+direction, @position[1]]
-    if !overlap_team?(move, pieces) && !overlap_enemy?(move, pieces)
+    if !overlap?(move, pieces, @color) && !overlap?(move, pieces, @board.opposite_color(@color))
       possible_moves << move
       move = [@position[0]+direction*2, @position[1]]
-      if !overlap_team?(move, pieces) && !overlap_enemy?(move, pieces) && @moved == false
+      if !overlap?(move, pieces, @color) && !overlap?(move, pieces, @board.opposite_color(@color)) && @moved == false
         possible_moves << move
       end
     end
     [-1, 1].each do |diagonal_offset|
       move = [@position[0]+direction, @position[1]+diagonal_offset]
       next if out_of_bounds?(move)
-      possible_moves << move if overlap_enemy?(move, pieces)
+      possible_moves << move if overlap?(move, pieces, @board.opposite_color(@color))
     end
     possible_moves
   end
