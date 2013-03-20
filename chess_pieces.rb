@@ -18,7 +18,7 @@ class Piece
   end
 
   def move_leads_to_check?(move)
-    preview = @board.preview_move(@position, move)
+    @board.preview_move(@position, move, @color)
     @board.check?(@color, preview)
   end
 

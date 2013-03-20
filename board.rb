@@ -2,10 +2,10 @@
 class Board
   attr_reader :board, :pieces
 
-  def initialize
+  def initialize(init = true)
     @pieces = []
     @board = Array.new(8) { Array.new(8) { nil } }
-    initialize_board
+    initialize_board if init
   end
 
   def [](move)
@@ -64,12 +64,11 @@ class Board
     enemy_moves.include?(king.position)
   end
 
-  def preview_move(start_pos,end_pos)
-    future_pieces = @pieces.map { |piece| piece.dup }
-    moved_piece = future_pieces.select { |piece| piece.position == start_pos}[0]
-    future_pieces.reject! { |piece| piece.position == end_pos }
-    moved_piece.position = end_pos
-    future_pieces
+  def preview_move(start_pos,end_pos, color)
+    preview = dup
+    piece = preview.pieces.select { |piece| piece.position == start_pos }[0]
+    piece.move(end_pos)
+    check(color)
   end
 
   def game_over
@@ -107,5 +106,20 @@ class Board
 
   def remove_piece_at(position)
     pieces.reject! {|piece| piece == [position]}
+  end
+
+  private
+  def dup
+    duped_board = Board.new(false)
+    @board.each_with_index do |row, row_index|
+      row.each_with_index do |square, col_index|
+        duped_board.add_piece(self[[row_index, col_index]].dup)
+      end
+    end
+    duped_board
+  end
+  def add_piece(piece)
+    @pieces << piece
+    duped_board[row_index,col_index] = piece
   end
 end
