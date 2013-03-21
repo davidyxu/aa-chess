@@ -66,9 +66,9 @@ class Board
 
   def preview_move(start_pos,end_pos, color)
     preview = dup
-    piece = preview.pieces.select { |piece| piece.position == start_pos }[0]
+    piece = preview[start_pos]
     piece.move(end_pos)
-    check(color)
+    check?(color)
   end
 
   def game_over
@@ -105,21 +105,24 @@ class Board
   end
 
   def remove_piece_at(position)
-    pieces.reject! {|piece| piece == [position]}
+    @pieces.reject! {|piece| piece == [position]}
   end
-
+  protected
+  def add_piece(piece)
+    duped_piece = piece.dup(self)
+    #duped_piece.position = duped_piece.position.dup
+    @pieces << duped_piece
+    self[piece.position] = duped_piece
+    #p duped_piece.position
+  end
   private
   def dup
     duped_board = Board.new(false)
     @board.each_with_index do |row, row_index|
       row.each_with_index do |square, col_index|
-        duped_board.add_piece(self[[row_index, col_index]].dup)
+        duped_board.add_piece(self[[row_index, col_index]]) unless square.nil?
       end
     end
     duped_board
-  end
-  def add_piece(piece)
-    @pieces << piece
-    duped_board[row_index,col_index] = piece
   end
 end

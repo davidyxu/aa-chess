@@ -1,15 +1,14 @@
 class Piece
   attr_accessor :position
-  attr_reader :color
+  attr_reader :color, :moved
 
-  def initialize(board, color)
+  def initialize(board, color, moved = false)
     @board = board
     @color = color
-    @moved = false
+    @moved = moved
   end
 
   def move(move)
-    raise "Invalid move" unless possible_moves.include?(move)
     @moved = true
     @board.remove_piece_at(move) unless @board[move].nil?
     @board[move] = self
@@ -19,7 +18,6 @@ class Piece
 
   def move_leads_to_check?(move)
     @board.preview_move(@position, move, @color)
-    @board.check?(@color, preview)
   end
 
   def possible_moves(pieces = @board.pieces)
@@ -36,6 +34,13 @@ class Piece
   def overlap?(move, pieces, color)
     @board.piece_at_square?(move, color, pieces)
   end
+
+  def dup(board)
+    duped_piece = self.class.new(board,@color)
+    duped_piece.position = @position
+    duped_piece
+  end
+
 end
 
 class SlidingPiece < Piece
