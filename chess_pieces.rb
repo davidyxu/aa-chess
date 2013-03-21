@@ -12,7 +12,7 @@ class Piece
     raise "Invalid move" unless possible_moves.include?(move)
     @moved = true
     @board.remove_piece_at(move) unless @board[move].nil?
-    @board[move] = self
+    @board[move] = self #REV: 'move' is the desintation?
     @board[@position] = nil
     @position = move
   end
