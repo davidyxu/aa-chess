@@ -10,7 +10,7 @@ class ChessInterface
     @black = HumanPlayer.new(:black)
     @unicode_chess = [['♔','♚'],['♕','♛'],['♖','♜'],
                       ['♗','♝'],['♘','♞'],['♙','♟']]
-    @piece_color = [:black, :black]
+    @piece_color = [:black, :black] #REV: ?
     @border = :light_white
     @checker = [:white, :light_white]
   end
