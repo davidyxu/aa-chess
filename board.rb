@@ -1,3 +1,4 @@
+# REV: great looking code, i only have very small suggestions
 
 class Board
   attr_reader :board, :pieces
@@ -51,7 +52,7 @@ class Board
   def pieces_of(color, pieces = @pieces)
     pieces.select { |piece| piece.color == color}
   end
-
+  # REV: maybe name this 'switch_color', or 'switch_player_from'
   def opposite_color (color)
     color == :white ? :black : :white
   end
@@ -99,7 +100,7 @@ class Board
       pieces_of(color, pieces).map {|piece| piece.position }
     end
   end
-
+  # REV: wow, your method segmentation is very good.
   def move_piece(piece_position, move)
     selected_piece = self[piece_position]
     selected_piece.move(move)
