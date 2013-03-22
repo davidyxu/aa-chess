@@ -20,6 +20,7 @@ class ChessInterface
   end
 
   def piece_color(square)
+  # REV: square.empty? would be clear and short
     if square.is_a?(NilClass)
       return :white
     else
@@ -27,7 +28,7 @@ class ChessInterface
       return @piece_color[1]  if square.color == :black
     end
   end
-
+  # REV: piece picture?
   def piece_representation(square)
     case square
     when King then type = @unicode_chess[0]
@@ -47,6 +48,9 @@ class ChessInterface
 
   def print_board(board)
     print_border_letters
+    # REV: if you reuse this nested loop to iterate through the board,
+    # a superstar move would be to define a Board#each_tile
+    # method that would iterate without exposing the nested loops that are needed.
     board.each_with_index do |row, row_index|
       print_border_numbers(row_index)
       row.each_with_index do |square, col_index|
