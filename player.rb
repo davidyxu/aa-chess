@@ -1,3 +1,6 @@
+# REV: It looks like #get_move is your longest method.  I guess you should break it up, but it's 
+# quite impressive that it is the longest method in your whole program.
+
 class HumanPlayer
   def initialize(color)
     @color = color
