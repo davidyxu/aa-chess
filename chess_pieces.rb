@@ -71,6 +71,8 @@ end
 class King < Piece
   def possible_moves(pieces = @board.pieces)
     possible_moves = []
+    # REV: you could combine this method with the knight.
+    # I think the only difference would be the vectors you feed it
     [-1,0,1].product([-1,0,1]).each do |vector|
       move = [vector[0]+@position[0], vector[1]+@position[1]]
       next if vector == [0,0]
